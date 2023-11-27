@@ -6,8 +6,6 @@ pub trait Getter {
 type GetterFunc = fn(key: String, value: &mut String) -> Result<(), String>;
 
 pub struct Group {
-    name: String,
-    cache_size: usize,
     getter_func: GetterFunc,
 }
 
@@ -15,14 +13,12 @@ unsafe impl Send for Group {}
 
 impl Group {
     pub fn get(&self, key: String, value: &mut String) -> Result<(), String> {
-        Ok(())
+        (self.getter_func)(key, value)
     }
 }
 
-pub fn new_group(name: String, cache_size: usize, getter_func: GetterFunc) -> Group {
+pub fn new_group(_name: String, _cache_size: usize, getter_func: GetterFunc) -> Group {
     Group {
-        name: name,
-        cache_size: cache_size,
         getter_func: getter_func,
     }
 }
@@ -42,7 +38,7 @@ mod tests {
         let string_group_cache_size = 10;
         let string_group_getter_func: GetterFunc =
             |key: String, value: &mut String| -> Result<(), String> {
-                *value = key;
+                *value = key.clone();
                 Ok(())
             };
         let string_group = Arc::new(new_group(
@@ -79,9 +75,9 @@ mod tests {
             handles.push(handle);
         }
 
-        for _ in 0..2 {
+        for i in 0..2 {
             let v = receiver.recv().unwrap();
-            println!("v: {}", v);
+            assert!(v == format!("thread-{}: {}", i, from_chan))
         }
 
         for handle in handles {
